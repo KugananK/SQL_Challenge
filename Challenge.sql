@@ -48,19 +48,10 @@ JOIN film_actor ON actor.actor_id=film_actor.actor_id
 GROUP BY actor.actor_id ORDER BY COUNT(*) DESC LIMIT 1;
 
 --'Academy dinosaur' has been rented out, when is it due to be returned?
-SELECT rental.rental_date + film.rental_duration FROM rental WHERE rental.inventory_id BETWEEN 1 AND 8
+SELECT film.title, rental.rental_date, DATE_ADD(rental.rental_date, INTERVAL film.rental_duration day) FROM rental
 JOIN inventory ON rental.inventory_id=inventory.inventory_id
-Join film ON inventory.film_id=film.film_id; 
-
-SELECT * FROM film JOIN inventory ON film.film_id=inventory.film_id
-
-SELECT * FROM rental WHERE inventory_id BETWEEN 1 AND 8
-ORDER BY return_date ASC LIMIT 1
-
-SELECT * FROM film WHERE title = 'Academy dinosaur';
-SELECT * FROM inventory WHERE film_id ='1';
-SELECT rental_date, return_date FROM rental WHERE inventory_id BETWEEN 1 AND 8;
--- NEED HELP
+JOIN film ON inventory.film_id=film.film_id
+WHERE rental.return_date IS NULL AND rental.inventory_id BETWEEN 1 AND 8; 
 
 --What is the average runtime of all films?
 SELECT AVG(length) FROM film;
@@ -196,16 +187,47 @@ SELECT title, release_date From movies WHERE release_date
 BETWEEN '1983-01-01' AND '1993-01-01'
 ORDER BY release_date ASC;
 
+---NEED HELP
 --Without using LIMIT, list the titles of the movies with the lowest average rating
-SELECT movies.title FROM ratings 
+SELECT movies.title, avg(ratings.rating) AS AVG_ratings FROM ratings 
 JOIN movies ON ratings.movie_id=movies.id
-ORDER BY rating ASC
-
+GROUP BY movies.title
+HAVING AVG_ratings = (
+    SELECT MIN() FROM ratings
+    GROUP BY movies.id
+)
+ORDER BY AVG_ratings;
+-- ASK for help
+SELECT * FROM (SELECT movies.title , AVG(rating) 
+AS avg_rating FROM ratings 
+JOIN movies on ratings.movie_id=movies.id 
+GROUP BY movies.id) sub  
+WHERE avg_rating=(SELECT MIN(avg_rating) FROM (SELECT movies.title , AVG(rating) 
+AS avg_rating FROM ratings 
+JOIN movies on ratings.movie_id=movies.id 
+GROUP BY movies.id) sub );
+---NEED HELP
 
 --List the unique records for Sci-Fi movies where male 24-year-old students have given 5 star ratings
-
+SELECT movies.title FROM movies
+JOIN ratings ON movies.id=ratings.movie_id
+JOIN users ON ratings.user_id=users.id
+JOIN occupations ON users.occupation_id=occupations.id
+JOIN genres_movies ON movies.id=genres_movies.movie_id
+JOIN genres ON genres_movies.genre_id=genres.id
+WHERE genres.name = 'Sci-Fi' AND users.gender = 'm'
+AND users.age = '24' AND occupations.name = 'student'
+AND ratings.rating = '5';
 
 --List the unique titles of each of the movies released on the most popular release day
-
+SELECT title FROM movies
+WHERE release_date = (
+    SELECT release_date FROM movies
+    GROUP BY release_date ORDER BY count(id) DESC LIMIT 1
+);
 
 --Find th etotla number of movies in each genre; list the results in ascending numeric order
+SELECT genres.name, COUNT(movies.id) FROM movies
+JOIN genres_movies ON movies.id=genres_movies.movie_id
+JOIN Genres ON genres_movies.genre_id=genres.id
+GROUP BY genres.id ORDER BY COUNT(movies.id) ASC;
